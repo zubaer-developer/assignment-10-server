@@ -20,6 +20,7 @@ const client = new MongoClient(uri, {
 
 let db;
 let usersCollection;
+let listingsCollection;
 
 async function connectDB() {
   try {
@@ -29,6 +30,9 @@ async function connectDB() {
 
     usersCollection = db.collection("users");
     console.log("Users Collection Ready");
+
+    listingsCollection = db.collection("listings");
+    console.log("Listings Collection Ready");
   } catch (error) {
     console.log("Database Connection Failed:", error);
   }
@@ -89,6 +93,28 @@ app.delete("/users/:id", async (req, res) => {
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Error deleting user" });
+  }
+});
+
+// Add a new listing
+app.post("/listings", async (req, res) => {
+  const listing = req.body;
+
+  try {
+    const result = await listingsCollection.insertOne(listing);
+    res.send({ message: "Listing added successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error adding listing", error });
+  }
+});
+
+// Get all listings
+app.get("/listings", async (req, res) => {
+  try {
+    const result = await listingsCollection.find().toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching listings", error });
   }
 });
 
