@@ -187,6 +187,27 @@ app.post("/orders", async (req, res) => {
   }
 });
 
+// Get all orders
+app.get("/orders", async (req, res) => {
+  try {
+    const result = await ordersCollection.find().toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching orders", error });
+  }
+});
+
+// Get orders by user email
+app.get("/orders/user/:email", async (req, res) => {
+  const email = req.params.email;
+  try {
+    const result = await ordersCollection.find({ email }).toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching user's orders", error });
+  }
+});
+
 // Root API
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
