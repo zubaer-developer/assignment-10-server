@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
 
 dotenv.config();
 
@@ -79,6 +79,17 @@ app.patch("/users/:email", async (req, res) => {
 
   const result = await usersCollection.updateOne(filter, updateDoc);
   res.send(result);
+});
+
+// Single User DELETE
+app.delete("/users/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Error deleting user" });
+  }
 });
 
 app.get("/", (req, res) => {
