@@ -158,6 +158,19 @@ app.patch("/listings/:id", async (req, res) => {
   }
 });
 
+// Delete listing by ID
+app.delete("/listings/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await listingsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+    res.send({ message: "Listing deleted successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error deleting listing", error });
+  }
+});
+
 // Root API
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
