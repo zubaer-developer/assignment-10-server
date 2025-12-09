@@ -39,8 +39,32 @@ connectDB();
 // Add New User
 app.post("/users", async (req, res) => {
   const user = req.body;
+
+  // Check if user already exists
+  const existingUser = await usersCollection.findOne({ email: user.email });
+
+  if (existingUser) {
+    return res.send({ message: "User already exists", insertedId: null });
+  }
+
+  // Insert new user
   const result = await usersCollection.insertOne(user);
   res.send(result);
+});
+
+// Get All Users
+app.get("/users", async (req, res) => {
+  const result = await usersCollection.find().toArray();
+  res.send(result);
+});
+
+//Get a Single User by Email
+app.get("/users/:email", async (req, res) => {
+  const email = req.params.email;
+
+  const user = await usersCollection.findOne({ email });
+
+  res.send(user);
 });
 
 app.get("/", (req, res) => {
