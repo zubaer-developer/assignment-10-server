@@ -21,6 +21,7 @@ const client = new MongoClient(uri, {
 let db;
 let usersCollection;
 let listingsCollection;
+let ordersCollection;
 
 async function connectDB() {
   try {
@@ -33,6 +34,9 @@ async function connectDB() {
 
     listingsCollection = db.collection("listings");
     console.log("Listings Collection Ready");
+
+    ordersCollection = db.collection("orders");
+    console.log("Orders Collection Ready");
   } catch (error) {
     console.log("Database Connection Failed:", error);
   }
@@ -168,6 +172,18 @@ app.delete("/listings/:id", async (req, res) => {
     res.send({ message: "Listing deleted successfully", result });
   } catch (error) {
     res.status(500).send({ message: "Error deleting listing", error });
+  }
+});
+
+// Add a new order
+app.post("/orders", async (req, res) => {
+  const order = req.body;
+
+  try {
+    const result = await ordersCollection.insertOne(order);
+    res.send({ message: "Order placed successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error placing order", error });
   }
 });
 
