@@ -208,6 +208,33 @@ app.get("/orders/user/:email", async (req, res) => {
   }
 });
 
+// Update order by ID
+app.patch("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+  const updatedOrder = req.body;
+
+  try {
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedOrder }
+    );
+    res.send({ message: "Order updated successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error updating order", error });
+  }
+});
+
+// Delete order by ID
+app.delete("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await ordersCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send({ message: "Order deleted successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error deleting order", error });
+  }
+});
+
 // Root API
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
