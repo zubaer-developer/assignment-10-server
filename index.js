@@ -67,6 +67,20 @@ app.get("/users/:email", async (req, res) => {
   res.send(user);
 });
 
+// Update User (PATCH /users/:email)
+app.patch("/users/:email", async (req, res) => {
+  const email = req.params.email;
+  const updatedUser = req.body;
+
+  const filter = { email: email };
+  const updateDoc = {
+    $set: updatedUser,
+  };
+
+  const result = await usersCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
 });
