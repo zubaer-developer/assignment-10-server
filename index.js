@@ -118,6 +118,47 @@ app.get("/listings", async (req, res) => {
   }
 });
 
+// Get Listings by ID or Category
+
+// Get listing by ID
+app.get("/listings/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const listing = await listingsCollection.findOne({ _id: new ObjectId(id) });
+    res.send(listing);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching listing", error });
+  }
+});
+
+// Get listings by category
+app.get("/listings/category/:category", async (req, res) => {
+  const category = req.params.category;
+  try {
+    const result = await listingsCollection.find({ category }).toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Error fetching listings", error });
+  }
+});
+
+// Update listing by ID
+app.patch("/listings/:id", async (req, res) => {
+  const id = req.params.id;
+  const updatedListing = req.body;
+
+  try {
+    const result = await listingsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedListing }
+    );
+    res.send({ message: "Listing updated successfully", result });
+  } catch (error) {
+    res.status(500).send({ message: "Error updating listing", error });
+  }
+});
+
+// Root API
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
 });
