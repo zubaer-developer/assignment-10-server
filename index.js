@@ -106,9 +106,11 @@ app.post("/listings", async (req, res) => {
 
   try {
     const result = await listingsCollection.insertOne(listing);
-    res.send({ message: "Listing added successfully", result });
+    res.send({ success: true, message: "Listing added successfully", result });
   } catch (error) {
-    res.status(500).send({ message: "Error adding listing", error });
+    res
+      .status(500)
+      .send({ success: false, message: "Error adding listing", error });
   }
 });
 
@@ -123,6 +125,26 @@ app.get("/listings", async (req, res) => {
 });
 
 // Get Listings by ID or Category
+
+// ➤ GET: Listings by User Email
+app.get("/listings/user/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+
+    const result = await listingsCollection.find({ email }).toArray();
+
+    res.send({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: "Failed to load listings",
+      error: error.message,
+    });
+  }
+});
 
 // Get listing by ID
 app.get("/listings/:id", async (req, res) => {
