@@ -9,6 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+/* ===============================
+   MongoDB Connection 
+================================ */
+
 const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri, {
   serverApi: {
@@ -24,254 +28,246 @@ let listingsCollection;
 let ordersCollection;
 
 async function connectDB() {
+  if (db) return;
+
   try {
     await client.connect();
     db = client.db(process.env.DB_NAME);
-    console.log("Database Connected Successfully");
 
     usersCollection = db.collection("users");
-    console.log("Users Collection Ready");
-
     listingsCollection = db.collection("listings");
-    console.log("Listings Collection Ready");
-
     ordersCollection = db.collection("orders");
-    console.log("Orders Collection Ready");
+
+    console.log(" MongoDB Connected");
   } catch (error) {
-    console.log("Database Connection Failed:", error);
+    console.error(" MongoDB Connection Failed:", error);
+    throw error;
   }
 }
 
-connectDB();
+/* ===============================
+   DB Middleware 
+================================ */
 
-// Add New User
-app.post("/users", async (req, res) => {
-  const user = req.body;
-
-  // Check if user already exists
-  const existingUser = await usersCollection.findOne({ email: user.email });
-
-  if (existingUser) {
-    return res.send({ message: "User already exists", insertedId: null });
-  }
-
-  // Insert new user
-  const result = await usersCollection.insertOne(user);
-  res.send(result);
-});
-
-// Get All Users
-app.get("/users", async (req, res) => {
-  const result = await usersCollection.find().toArray();
-  res.send(result);
-});
-
-//Get a Single User by Email
-app.get("/users/:email", async (req, res) => {
-  const email = req.params.email;
-
-  const user = await usersCollection.findOne({ email });
-
-  res.send(user);
-});
-
-// Update User (PATCH /users/:email)
-app.patch("/users/:email", async (req, res) => {
-  const email = req.params.email;
-  const updatedUser = req.body;
-
-  const filter = { email: email };
-  const updateDoc = {
-    $set: updatedUser,
-  };
-
-  const result = await usersCollection.updateOne(filter, updateDoc);
-  res.send(result);
-});
-
-// Single User DELETE
-app.delete("/users/:id", async (req, res) => {
+app.use(async (req, res, next) => {
   try {
-    const id = req.params.id;
-    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    await connectDB();
+    next();
+  } catch (error) {
+    res.status(500).send({ message: "Database connection failed" });
+  }
+});
+
+/* ===============================
+   USERS API
+================================ */
+
+app.post("/users", async (req, res) => {
+  try {
+    const user = req.body;
+    const existingUser = await usersCollection.findOne({ email: user.email });
+
+    if (existingUser) {
+      return res.send({ message: "User already exists", insertedId: null });
+    }
+
+    const result = await usersCollection.insertOne(user);
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error deleting user" });
+    res.status(500).send({ message: "Failed to add user" });
   }
 });
 
-// Add a new listing
-app.post("/listings", async (req, res) => {
-  const listing = req.body;
-
+app.get("/users", async (req, res) => {
   try {
-    const result = await listingsCollection.insertOne(listing);
-    res.send({ success: true, message: "Listing added successfully", result });
+    const result = await usersCollection.find().toArray();
+    res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Error adding listing", error });
+    res.status(500).send({ message: "Failed to fetch users" });
   }
 });
 
-// Get all listings
+app.get("/users/:email", async (req, res) => {
+  try {
+    const user = await usersCollection.findOne({ email: req.params.email });
+    res.send(user);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch user" });
+  }
+});
+
+app.patch("/users/:email", async (req, res) => {
+  try {
+    const result = await usersCollection.updateOne(
+      { email: req.params.email },
+      { $set: req.body }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update user" });
+  }
+});
+
+app.delete("/users/:id", async (req, res) => {
+  try {
+    const result = await usersCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to delete user" });
+  }
+});
+
+/* ===============================
+   LISTINGS API
+================================ */
+
+app.post("/listings", async (req, res) => {
+  try {
+    const result = await listingsCollection.insertOne(req.body);
+    res.send({ success: true, result });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to add listing" });
+  }
+});
+
 app.get("/listings", async (req, res) => {
   try {
     const result = await listingsCollection.find().toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error fetching listings", error });
+    res.status(500).send({ message: "Failed to fetch listings" });
   }
 });
 
-// Get Listings by ID or Category
-
-// ➤ GET: Listings by User Email
 app.get("/listings/user/:email", async (req, res) => {
   try {
-    const email = req.params.email;
-
-    const result = await listingsCollection.find({ email }).toArray();
-
-    res.send({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    res.status(500).send({
-      success: false,
-      message: "Failed to load listings",
-      error: error.message,
-    });
-  }
-});
-
-// Get listing by ID
-app.get("/listings/:id", async (req, res) => {
-  const id = req.params.id;
-  try {
-    const listing = await listingsCollection.findOne({ _id: new ObjectId(id) });
-    res.send(listing);
-  } catch (error) {
-    res.status(500).send({ message: "Error fetching listing", error });
-  }
-});
-
-// Get listings by category
-app.get("/listings/category/:category", async (req, res) => {
-  const category = req.params.category;
-  try {
-    const result = await listingsCollection.find({ category }).toArray();
+    const result = await listingsCollection
+      .find({ email: req.params.email })
+      .toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error fetching listings", error });
+    res.status(500).send({ message: "Failed to fetch listings" });
   }
 });
 
-// Update listing by ID
-app.patch("/listings/:id", async (req, res) => {
-  const id = req.params.id;
-  const updatedListing = req.body;
+app.get("/listings/:id", async (req, res) => {
+  try {
+    const result = await listingsCollection.findOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch listing" });
+  }
+});
 
+app.get("/listings/category/:category", async (req, res) => {
+  try {
+    const result = await listingsCollection
+      .find({ category: req.params.category })
+      .toArray();
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch category listings" });
+  }
+});
+
+app.patch("/listings/:id", async (req, res) => {
   try {
     const result = await listingsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updatedListing }
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body }
     );
-    res.send({ message: "Listing updated successfully", result });
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error updating listing", error });
+    res.status(500).send({ message: "Failed to update listing" });
   }
 });
 
-// Delete listing by ID
 app.delete("/listings/:id", async (req, res) => {
-  const id = req.params.id;
   try {
     const result = await listingsCollection.deleteOne({
-      _id: new ObjectId(id),
+      _id: new ObjectId(req.params.id),
     });
-    res.send({ message: "Listing deleted successfully", result });
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error deleting listing", error });
+    res.status(500).send({ message: "Failed to delete listing" });
   }
 });
 
-// Add a new order
+/* ===============================
+   ORDERS API
+================================ */
+
 app.post("/orders", async (req, res) => {
-  const order = req.body;
-
   try {
-    const result = await ordersCollection.insertOne(order);
-    res.send({ message: "Order placed successfully", result });
+    const result = await ordersCollection.insertOne(req.body);
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error placing order", error });
+    res.status(500).send({ message: "Failed to place order" });
   }
 });
 
-// Get all orders
 app.get("/orders", async (req, res) => {
   try {
     const result = await ordersCollection.find().toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error fetching orders", error });
+    res.status(500).send({ message: "Failed to fetch orders" });
   }
 });
 
-// Get orders by user email
 app.get("/orders/user/:email", async (req, res) => {
-  const email = req.params.email;
   try {
-    const result = await ordersCollection.find({ email }).toArray();
+    const result = await ordersCollection
+      .find({ email: req.params.email })
+      .toArray();
     res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error fetching user's orders", error });
+    res.status(500).send({ message: "Failed to fetch user orders" });
   }
 });
 
-// Update order by ID
 app.patch("/orders/:id", async (req, res) => {
-  const id = req.params.id;
-  const updatedOrder = req.body;
-
   try {
     const result = await ordersCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updatedOrder }
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body }
     );
-    res.send({ message: "Order updated successfully", result });
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error updating order", error });
+    res.status(500).send({ message: "Failed to update order" });
   }
 });
 
-// Delete order by ID
 app.delete("/orders/:id", async (req, res) => {
-  const id = req.params.id;
   try {
-    const result = await ordersCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send({ message: "Order deleted successfully", result });
+    const result = await ordersCollection.deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: "Error deleting order", error });
+    res.status(500).send({ message: "Failed to delete order" });
   }
 });
 
-// Root API
+/* ===============================
+   ROOT
+================================ */
+
 app.get("/", (req, res) => {
   res.send("PawMart Server is Running...");
 });
 
-// const PORT = process.env.PORT || 5000;
-// app.listen(PORT, () => {
-//   console.log(`Server is running on port ${PORT}`);
-// });
+/* ===============================
+   LOCAL ONLY
+================================ */
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+  app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 }
 
 export default app;
